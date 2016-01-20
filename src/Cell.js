@@ -1,7 +1,7 @@
 'use strict'
 
 import * as d3 from 'd3'
-import escher from 'escher-vis'
+import * as escher from 'escher-vis'
 import { createClass, createReducer } from 'tinier'
 
 export const empty_cell = {

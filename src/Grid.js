@@ -5,7 +5,25 @@ import { createClass, createReducer } from 'tinier';
 import { ADD_CELL, DELETE_CELL } from './actionTypes';
 import { empty_cell } from './Cell';
 
-export const empty_grid = { cells: {}, add: {} };
+function randomIntInclusive(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// TODO use async actions:
+// http://rackt.org/redux/docs/advanced/AsyncActions.html
+// https://github.com/acdlite/redux-actions
+// https://github.com/acdlite/redux-promise
+//
+//function randomMapData () {
+//maps = [
+//
+//]
+//d3.json(maps[randomIntInclusive(0, maps.length - 1)], d => {
+//
+//}
+//}
+
+export const empty_grid = { cells: [], add: {} };
 
 export const Grid = createClass({
   reducer: createReducer(empty_grid, {
@@ -21,31 +39,21 @@ export const Grid = createClass({
   }),
   actionCreators: {
     [ADD_CELL]: data => {
-      return { type: ADD_CELL, text: get(data, 'text', '') };
+      return { type: ADD_CELL, map_data: null };//randomMapData() };
     }
   },
   create: (localState, appState, el) => {
     const sel = d3.select(el)
-    // add title
-    sel.append('span').text('Todos')
-    sel.append('div').attr('id', 'todos')
-    sel.append('div').attr('id', 'add-button')
+      // add title
+      sel.append('span').text('Escher Grid')
+      sel.append('div').attr('id', 'cells')
+      sel.append('div').attr('id', 'add-button')
   },
   update: (localState, appState, el) => {
     const sel = d3.select(el)
-    const todos_sel = sel.select('#todos')
-    // bind data
-    const sels = todos_sel.selectAll('.todo')
-            .data(toArray(localState.todos), d => d.id)
-    // on enter append divs
-    sels.enter().append('div').attr('class', 'todo')
-    sels.exit().remove()
-    // object of todo containers
-    const todo_containers = {}
-    sels.each(function(d) { todo_containers[d.id] = this })
-    // return containers for children
+    const cells_sel = sel.select('#cells')
     return {
-      todos: todo_containers,
+      cells: [],
       addButton: sel.select('#add-button').node()
     };
   }
