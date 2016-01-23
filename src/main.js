@@ -18,15 +18,15 @@ import { AddButton } from './AddButton'
 
 import { applyMiddleware, createStore } from 'redux'
 import createLogger from 'redux-logger'
-import promiseMiddleware from 'redux-promise'
+import thunk from 'redux-thunk'
 const logger = createLogger()
-const createStoreWithMiddleware = applyMiddleware(promiseMiddleware, logger)(createStore)
-
+const createStoreWithMiddleware = applyMiddleware(thunk, logger)(createStore)
 
 const app = Grid('main', {
   cells: arrayOf(Cell('cells')),
   add: AddButton('addButton'),
-  isLoading: false
+  isLoading: false,
+  message: ''
 })
 
 const api = app.run(document.body, null, createStoreWithMiddleware)
