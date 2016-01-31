@@ -1,10 +1,31 @@
 'use strict'
 
 import * as d3 from 'd3'
-import * as d3_promise from 'd3.promise'
-import { createClass, createReducer, basicActionCreators } from 'tinier'
-import { ADD_CELL, ADD_CELL_BEGIN, ADD_CELL_SUCCESS, ADD_CELL_FAILURE, DELETE_CELL } from './actionTypes'
-import { empty_cell } from './Cell'
+import { createView, createReducer,
+         createGlobalActionCreators, createLocalActionCreators,
+         objectOf, arrayOf, addressAction,
+         addressRelTo, addressRelFrom, } from 'tinier'
+import { Cell, CLEAR_CELL, CLEAR_MESSAGES, } from './Cell'
+import { Button, CLICK as BUTTON_CLICK, } from './Button'
+import { times } from 'lodash'
+
+import './grid.css'
+
+// ---------
+// constants
+// ---------
+
+// actions
+const ADD_CELL = '@ADD_CELL'
+const DELETE_CELL = '@DELETE_CELL'
+const DELETE_LAST_CELL = '@DELETE_LAST_CELL'
+const ADD_CELL_BEGIN = '@ADD_CELL_BEGIN'
+const ADD_CELL_SUCCESS = '@ADD_CELL_SUCCESS'
+const ADD_CELL_FAILURE = '@ADD_CELL_FAILURE'
+
+// --------
+// map URLs
+// --------
 
 function randomIntInclusive (min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min
@@ -24,62 +45,143 @@ function randomMapURL () {
   const map_url = url + map_name
   return { map_url, map_name }
 }
+function getJSON (url) {
+  return new Promise(function (fulfill, reject) {
+    d3.json(url, (e, d) => {
+      if (e) reject (e)
+      else fulfill(d)
+    })
+  })
+}
 
-export const empty_grid = { cells: [], add: {} }
+// ------------
+// tinier view
+// ------------
 
-export const Grid = createClass({
-  reducer: createReducer(empty_grid, {
-    [ADD_CELL_BEGIN]: (state, action) => {
-      return Object.assign({}, state, {
-        isLoading: true,
-        message: 'Loading ' + action.payload.map_name
-      })
-    },
-    [ADD_CELL_SUCCESS]: (state, action) => {
-      return Object.assign({}, state, {
-        cells: [
-            ...state.cells,
-          Object.assign({}, empty_cell, { map_data: action.payload.map_data }),
-        ],
-        isLoading: false,
-        message: 'Loaded ' + action.payload.map_name,
-      })
-    },
-    [ADD_CELL_FAILURE]: (state, action) => {
-      return Object.assign({}, state, {
-        isLoading: false,
-        message: 'Could not load "' + action.payload.map_name + '"',
-      })
+export const Grid = createView({
+
+  model: {
+    cells: arrayOf(Cell),
+    buttons: [ Button, Button, Button ],
+  },
+
+  init: function (initCellCount = 0) {
+    // cell state
+    const cells = times(initCellCount, i => {
+      return Cell.init({ title: String(i + 1), width: 50, height: 50, })
+    })
+    // buttons state
+    const addButton = Button.init(
+      '+',
+      addressAction(ADD_CELL, addressRelTo([ 'buttons', 0 ]))
+    )
+    const deleteButton = Button.init(
+      '-',
+      addressAction(DELETE_LAST_CELL, addressRelTo([ 'buttons', 1 ]))
+    )
+    const clear2Button = Button.init(
+      'Clear second cell',
+      addressAction(
+        CLEAR_CELL,
+        addressRelFrom(['cells', 1 ], addressRelTo([ 'buttons', 2 ]))
+        // TODO addressRelTo and addressRelFrom should be commutative
+      )
+    )
+
+    // model
+    return {
+      cells,
+      buttons: [ addButton, deleteButton, clear2Button ],
+      isLoading: false,
+      message: '',
     }
-  }),
-  actionCreators: Object.assign({}, {
-    // async actions
-    [ADD_CELL]: () => { // TODO this seems like a hack
-      // use thunk
-      return actions => {
-        const { map_url, map_name } = randomMapURL()
-        actions[ADD_CELL_BEGIN]({ map_name })
-        return d3_promise.json(map_url).then(
-          map_data => actions[ADD_CELL_SUCCESS]({ map_data, map_name }),
-          error => actions[ADD_CELL_FAILURE]({ error, map_name })
-        )
+  },
+
+  getReducer: function (model) {
+    return createReducer({
+      [ADD_CELL_BEGIN]: (state, action) => {
+        return Object.assign({}, state, {
+          isLoading: true,
+          message: 'Loading ' + action.payload.map_name
+        })
+      },
+      [ADD_CELL_SUCCESS]: (state, action) => {
+        return Object.assign({}, state, {
+          cells: [
+              ...state.cells,
+            model.cells.view.init({ map_data: action.payload.map_data }),
+          ],
+          isLoading: false,
+          message: 'Loaded ' + action.payload.map_name,
+        })
+      },
+      [ADD_CELL_FAILURE]: (state, action) => {
+        return Object.assign({}, state, {
+          isLoading: false,
+          message: 'Could not load "' + action.payload.map_name + '"',
+        })
+      },
+      [DELETE_LAST_CELL]: (state, action) => {
+        return Object.assign({}, state, {
+          cells: state.cells.slice(0, -1)
+        })
       }
-    },
-  }, basicActionCreators([ // sync actions
-    ADD_CELL_BEGIN,
-    ADD_CELL_SUCCESS,
-    ADD_CELL_FAILURE
-  ])),
-  create: (localState, appState, el) => {
+    })
+  },
+
+  getActionCreators: function (address) {
+    const asyncActionCreators = {
+      [ADD_CELL]: () => {
+        // Action creators that use the tinier middleware can return a promise
+        // but not an action. Instead, they call other actions.
+        return actions => {
+          const { map_url, map_name } = randomMapURL()
+          actions[ADD_CELL_BEGIN]({ map_name })
+          return getJSON(map_url).then(
+            // The only actions available are those defined in this view. These
+            // actions already have the address built in.
+            map_data => actions[ADD_CELL_SUCCESS]({ map_data, map_name }),
+            error => actions[ADD_CELL_FAILURE]({ error, map_name })
+          )
+        }
+      },
+    }
+    // localActionCreators returns action creators that have the given address
+    // as the address attribute. A single argument to the action is passed in
+    // the payload attribute.
+    const syncActionCreators = createLocalActionCreators(
+      address,
+      [ ADD_CELL_BEGIN, ADD_CELL_SUCCESS, ADD_CELL_FAILURE, DELETE_CELL,
+        DELETE_LAST_CELL ]
+    )
+    // To run a global action, the best approach is to define a new action
+    // creator so that the action will be available in the draw functions.
+    const globalActionCreators = createGlobalActionCreators([ CLEAR_MESSAGES ])
+    // Return an object of action creators.
+    return Object.assign(asyncActionCreators, syncActionCreators, globalActionCreators)
+  },
+
+  create: function (localState, appState, el, actions) {
     const sel = d3.select(el)
+    // fill screen
+    sel.attr('id', 'grid-container')
     // add title
-    sel.append('span').append('h1').text('Escher Grid')
+    sel.append('div')
+      .attr('id', 'title')
+      .append('h1')
+      .text('Escher Grid')
     sel.append('div').attr('id', 'cells')
     sel.append('div').attr('id', 'add-button')
+    sel.append('div').attr('id', 'delete-button')
+    sel.append('div').attr('id', 'clear2-button')
     sel.append('div').attr('id', 'status')
   },
-  update: (localState, appState, el) => {
+
+  update: function (localState, appState, el, actions) {
     const sel = d3.select(el)
+
+    // cell size
+    const percent = 1.0 / Math.ceil(Math.sqrt(localState.cells.length)) * 100
 
     // cells
     const cells_sel = sel.select('#cells')
@@ -88,7 +190,11 @@ export const Grid = createClass({
     cells_sel.enter()
       .append('div')
       .attr('class', 'cell')
-    cells_sel.exit().remove()
+    cells_sel
+      .style('width', percent + '%')
+      .style('height', percent + '%')
+    cells_sel.exit()
+      .remove()
     const cells_nodes = []
     cells_sel.each(function () {
       cells_nodes.push(this)
@@ -98,7 +204,18 @@ export const Grid = createClass({
     sel.select('#status').text(localState.message)
     return {
       cells: cells_nodes,
-      addButton: sel.select('#add-button').node()
+      buttons: [
+        sel.select('#add-button').node(),
+        sel.select('#delete-button').node(),
+        sel.select('#clear2-button').node(),
+      ],
     }
-  }
+  },
+
+  getAPI: function (actions) {
+    return {
+      addCell: actions[ADD_CELL]
+    }
+  },
+
 })

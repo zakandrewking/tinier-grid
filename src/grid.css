@@ -1,0 +1,34 @@
+#grid-container {
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+}
+
+#title {
+  z-index: 5;
+  position: absolute;
+  top: 5px;
+  left: 5px;
+}
+
+#add-button {
+  z-index: 10;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+}
+
+#cells {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+}
+
+.cell {
+  float: left;
+}
+
+.escher-container {
+  height: 100%;
+  width: 100%;
+}

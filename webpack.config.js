@@ -1,3 +1,5 @@
+const path = require('path')
+
 module.exports = {
   entry: [ 'babel-polyfill', './src/main.js' ],
   output: {
@@ -5,6 +7,8 @@ module.exports = {
     filename: 'bundle.js'
   },
   devtool: 'source-map',
+  resolve: { fallback: path.join(__dirname, "node_modules") },
+  resolveLoader: { fallback: path.join(__dirname, "node_modules") },
   module: {
     preLoaders: [
       {
