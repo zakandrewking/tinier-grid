@@ -4,31 +4,31 @@
   width: 100%;
 }
 
-#title {
-  z-index: 5;
-  position: absolute;
-  top: 5px;
-  left: 5px;
-}
-
-#add-button {
-  z-index: 10;
-  position: absolute;
-  top: 5px;
-  right: 5px;
-}
-
-#cells {
+#grid-cells {
   position: absolute;
   height: 100%;
   width: 100%;
 }
 
-.cell {
+.grid-cell {
+  float: left;
+}
+
+.grid-nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 30px;
+  width: 100%;
+  z-index:10;
+}
+
+.grid-nav > div {
   float: left;
 }
 
 .escher-container {
+  padding-top: 30px;
   height: 100%;
   width: 100%;
 }

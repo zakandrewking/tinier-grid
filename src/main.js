@@ -15,6 +15,6 @@ const createStoreWithMiddleware = applyMiddleware(
   createLogger()
 )(createStore)
 
-const api = run(Grid, document.body, Grid.init(2), createStoreWithMiddleware)
+const api = run(Grid, document.body, null, createStoreWithMiddleware)
 
 api.addCell()

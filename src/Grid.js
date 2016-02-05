@@ -2,7 +2,7 @@
 
 import * as d3 from 'd3'
 import { createView, createReducer,
-         createGlobalActionCreators, createLocalActionCreators,
+         createAsyncActionCreators, createGlobalActionCreators, createLocalActionCreators,
          objectOf, arrayOf, addressAction,
          addressRelTo, addressRelFrom, } from 'tinier'
 import { Cell, CLEAR_CELL, CLEAR_MESSAGES, } from './Cell'
@@ -73,17 +73,17 @@ export const Grid = createView({
     // buttons state
     const addButton = Button.init(
       '+',
-      addressAction(ADD_CELL, addressRelTo([ 'buttons', 0 ]))
+      addressAction(ADD_CELL, addressRelFrom([ 'buttons', 0 ]))
     )
     const deleteButton = Button.init(
       '-',
-      addressAction(DELETE_LAST_CELL, addressRelTo([ 'buttons', 1 ]))
+      addressAction(DELETE_LAST_CELL, addressRelFrom([ 'buttons', 1 ]))
     )
     const clear2Button = Button.init(
       'Clear second cell',
       addressAction(
         CLEAR_CELL,
-        addressRelFrom(['cells', 1 ], addressRelTo([ 'buttons', 2 ]))
+        addressRelTo(['cells', 1 ], addressRelFrom([ 'buttons', 2 ]))
         // TODO addressRelTo and addressRelFrom should be commutative
       )
     )
@@ -130,7 +130,7 @@ export const Grid = createView({
   },
 
   getActionCreators: function (address) {
-    const asyncActionCreators = {
+    const asyncActionCreators = createAsyncActionCreators(address, {
       [ADD_CELL]: () => {
         // Action creators that use the tinier middleware can return a promise
         // but not an action. Instead, they call other actions.
@@ -145,7 +145,7 @@ export const Grid = createView({
           )
         }
       },
-    }
+    })
     // localActionCreators returns action creators that have the given address
     // as the address attribute. A single argument to the action is passed in
     // the payload attribute.
@@ -154,27 +154,25 @@ export const Grid = createView({
       [ ADD_CELL_BEGIN, ADD_CELL_SUCCESS, ADD_CELL_FAILURE, DELETE_CELL,
         DELETE_LAST_CELL ]
     )
-    // To run a global action, the best approach is to define a new action
-    // creator so that the action will be available in the draw functions.
-    const globalActionCreators = createGlobalActionCreators([ CLEAR_MESSAGES ])
     // Return an object of action creators.
-    return Object.assign(asyncActionCreators, syncActionCreators, globalActionCreators)
+    return Object.assign(asyncActionCreators, syncActionCreators)
   },
 
   create: function (localState, appState, el, actions) {
     const sel = d3.select(el)
     // fill screen
     sel.attr('id', 'grid-container')
+    sel.append('div').attr('id', 'grid-cells')
     // add title
-    sel.append('div')
+    const nav = sel.append('div').attr('class', 'grid-nav')
+    nav.append('div')
       .attr('id', 'title')
       .append('h1')
       .text('Escher Grid')
-    sel.append('div').attr('id', 'cells')
-    sel.append('div').attr('id', 'add-button')
-    sel.append('div').attr('id', 'delete-button')
-    sel.append('div').attr('id', 'clear2-button')
-    sel.append('div').attr('id', 'status')
+    nav.append('div').attr('id', 'add-button')
+    nav.append('div').attr('id', 'delete-button')
+    nav.append('div').attr('id', 'clear2-button')
+    nav.append('div').attr('id', 'grid-status')
   },
 
   update: function (localState, appState, el, actions) {
@@ -184,12 +182,12 @@ export const Grid = createView({
     const percent = 1.0 / Math.ceil(Math.sqrt(localState.cells.length)) * 100
 
     // cells
-    const cells_sel = sel.select('#cells')
-            .selectAll('.cell')
+    const cells_sel = sel.select('#grid-cells')
+            .selectAll('.grid-cell')
             .data(localState.cells)
     cells_sel.enter()
       .append('div')
-      .attr('class', 'cell')
+      .attr('class', 'grid-cell')
     cells_sel
       .style('width', percent + '%')
       .style('height', percent + '%')
@@ -201,7 +199,7 @@ export const Grid = createView({
     })
 
     // message
-    sel.select('#status').text(localState.message)
+    sel.select('#grid-status').text(localState.message)
     return {
       cells: cells_nodes,
       buttons: [
@@ -212,7 +210,7 @@ export const Grid = createView({
     }
   },
 
-  getAPI: function (actions) {
+  getAPI: function (actions, actionWithAddress) {
     return {
       addCell: actions[ADD_CELL]
     }
