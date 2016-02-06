@@ -2,7 +2,7 @@
 
 import * as d3 from 'd3'
 import { createView, createReducer,
-         createAsyncActionCreators, createGlobalActionCreators, createLocalActionCreators,
+         createAsyncActionCreators, createActionCreators,
          objectOf, arrayOf, addressAction,
          addressRelTo, addressRelFrom, } from 'tinier'
 import { Cell, CLEAR_CELL, CLEAR_MESSAGES, } from './Cell'
@@ -129,8 +129,8 @@ export const Grid = createView({
     })
   },
 
-  getActionCreators: function (address) {
-    const asyncActionCreators = createAsyncActionCreators(address, {
+  actionCreators: Object.assign(
+    createAsyncActionCreators({
       [ADD_CELL]: () => {
         // Action creators that use the tinier middleware can return a promise
         // but not an action. Instead, they call other actions.
@@ -145,18 +145,11 @@ export const Grid = createView({
           )
         }
       },
-    })
-    // localActionCreators returns action creators that have the given address
-    // as the address attribute. A single argument to the action is passed in
-    // the payload attribute.
-    const syncActionCreators = createLocalActionCreators(
-      address,
-      [ ADD_CELL_BEGIN, ADD_CELL_SUCCESS, ADD_CELL_FAILURE, DELETE_CELL,
-        DELETE_LAST_CELL ]
-    )
-    // Return an object of action creators.
-    return Object.assign(asyncActionCreators, syncActionCreators)
-  },
+    }),
+    createActionCreators([
+      ADD_CELL_BEGIN, ADD_CELL_SUCCESS, ADD_CELL_FAILURE, DELETE_CELL, DELETE_LAST_CELL
+    ])
+  ),
 
   create: function (localState, appState, el, actions) {
     const sel = d3.select(el)
