@@ -23,7 +23,7 @@ export const Cell = createView({
     CLEAR_MESSAGES
   ]),
 
-  reducer: createReducer({
+  getReducer: model => createReducer({
     [CLEAR_CELL]: (state, action) => {
       return Object.assign({}, state, {
         map_data: null,
@@ -46,12 +46,13 @@ export const Cell = createView({
   },
 
   update: function (localState, _, el) {
-    if (localState.map_data) {
-      const escher_sel = d3.select(el).select('.escher-container')
-      const b = escher_sel.node().__builder__
+    const escher_sel = d3.select(el).select('.escher-container')
+    const b = escher_sel.node().__builder__
+    if (localState.map_data !== null)
       b.load_map(localState.map_data)
-      b.map.zoom_extent_canvas()
-    }
+    else
+      b.map.clear_map()
+    // b.map.zoom_extent_canvas()
   },
 
 })
